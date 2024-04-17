@@ -1,2 +1,24 @@
 server:
   port: 8080
+
+frontDomain: "http://localhost:3000"
+dbDomain: "mysql://localhost:3306"
+
+spring:
+  datasource:
+    url: jdbc:${dbDomain}/reactdemo?useSSL=false&autoReconnect=true&useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Seoul
+    username: root
+    password: 1234
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+jwt:
+  issuer: reactdemo
+  secret-key: jwtTokenSecretKey
