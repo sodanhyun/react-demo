@@ -1,7 +1,7 @@
 package com.react.demo.service;
 
 import com.react.demo.dto.CreateAccessTokenResponse;
-import com.react.demo.entity.Member;
+import com.react.demo.entity.User;
 import com.react.demo.jwt.TokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,10 +19,10 @@ public class TokenService {
         if(!tokenProvider.validToken(refreshToken))
             throw new IllegalArgumentException("Unexpected token");
 
-        Member member = refreshTokenService.findByRefreshToken(refreshToken).getMember();
+        User User = refreshTokenService.findByRefreshToken(refreshToken).getUser();
 
         return new CreateAccessTokenResponse(
-                tokenProvider.createAccessToken(member, Duration.ofHours(2)),
+                tokenProvider.createAccessToken(User, Duration.ofHours(2)),
                 refreshToken);
     }
 }

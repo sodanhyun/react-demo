@@ -1,14 +1,12 @@
 package com.react.demo.service;
 
-import com.react.demo.constant.CustomUser;
-import com.react.demo.dto.CreateAccessTokenRequest;
 import com.react.demo.dto.CreateAccessTokenResponse;
 import com.react.demo.dto.LoginDto;
-import com.react.demo.dto.MemberFormDto;
-import com.react.demo.entity.Member;
+import com.react.demo.dto.UserFormDto;
+import com.react.demo.entity.User;
 import com.react.demo.entity.RefreshToken;
 import com.react.demo.jwt.TokenProvider;
-import com.react.demo.repository.MemberRepository;
+import com.react.demo.repository.UserRepository;
 import com.react.demo.repository.RefreshTokenRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -26,53 +24,51 @@ import java.time.Duration;
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class MemberService implements UserDetailsService {
+public class UserService implements UserDetailsService {
 
-    private final MemberRepository memberRepository;
+    private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
 
-    public Member findById(String memberId) {
-        return memberRepository.findById(memberId)
+    public User findById(String memberId) {
+        return userRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("Unexpected user"));
     }
 
-    public void signUp(MemberFormDto dto) {
-        Member exist = memberRepository.findById(dto.getId()).orElse(null);
+    public void signUp(UserFormDto dto) {
+        User exist = userRepository.findById(dto.getId()).orElse(null);
         if(exist != null) {
             throw new RuntimeException("해당 아이디는 사용할 수 없습니다");
         }
-        Member member = Member.createMember(dto, passwordEncoder);
-        memberRepository.save(member);
+        User user = User.createUser(dto, passwordEncoder);
+        userRepository.save(user);
     }
 
     public CreateAccessTokenResponse signIn(LoginDto loginDto) {
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(loginDto.getId(), loginDto.getPassword());
-        // authenticate 메소드가 실행이 될 때 CustomUserDetailsService class의 loadUserByUsername 메소드가 실행
         Authentication authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
-        Member member = memberRepository.findById(authentication.getName()).orElse(null);
-        if(member == null) {
+        User user = userRepository.findById(authentication.getName()).orElse(null);
+        if(user == null) {
             throw new RuntimeException("존재하지 않는 유저입니다");
         }
-        RefreshToken existRefreshToken = refreshTokenRepository.findByMember(member).orElse(null);
+        RefreshToken existRefreshToken = refreshTokenRepository.findByUser(user).orElse(null);
         String refreshToken = tokenProvider.createRefreshToken(Duration.ofDays(14));
         if(existRefreshToken == null) {
-            refreshTokenRepository.save(new RefreshToken(member, refreshToken));
+            refreshTokenRepository.save(new RefreshToken(user, refreshToken));
         }else {
             existRefreshToken.update(refreshToken);
         }
-        String accessToken = tokenProvider.createAccessToken(member, Duration.ofHours(2));
+        String accessToken = tokenProvider.createAccessToken(user, Duration.ofHours(2));
 
         return new CreateAccessTokenResponse(accessToken, refreshToken);
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Member member = memberRepository.findById(username)
+        return userRepository.findById(username)
                 .orElseThrow(() -> new UsernameNotFoundException("존재하지 않는 유저입니다."));
-        return new CustomUser(member);
     }
 }

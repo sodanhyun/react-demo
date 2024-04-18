@@ -1,6 +1,6 @@
 package com.react.demo.jwt;
 
-import com.react.demo.entity.Member;
+import com.react.demo.entity.User;
 import io.jsonwebtoken.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,7 +8,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -22,17 +21,17 @@ public class TokenProvider {
     private static final String AUTHORITIES_KEY = "auth";
     private final JwtProperties jwtProperties;
 
-    public String createAccessToken(Member member, Duration expiredAt) {
+    public String createAccessToken(User User, Duration expiredAt) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expiredAt.toMillis());
-        String authorities = member.getRole().getKey();
+        String authorities = User.getRole().getKey();
 
         return Jwts.builder()
                 .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
                 .setIssuer(jwtProperties.getIssuer())
                 .setIssuedAt(now)
                 .setExpiration(expiry)
-                .setSubject(member.getId())
+                .setSubject(User.getId())
                 .claim(AUTHORITIES_KEY, authorities)
                 .signWith(SignatureAlgorithm.HS256, jwtProperties.getSecretKey())
                 .compact();
@@ -85,7 +84,12 @@ public class TokenProvider {
                 Arrays.stream(claims.get(AUTHORITIES_KEY).toString().split(","))
                         .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toList());
-        return new UsernamePasswordAuthenticationToken(new User(claims.getSubject(), "", authorities), token, authorities);
+        return new UsernamePasswordAuthenticationToken(
+                new org.springframework.security.core.userdetails.User(
+                        claims.getSubject(), "", authorities
+                ),
+                token,
+                authorities);
     }
 
     private Claims getClaims(String token) {

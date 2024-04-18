@@ -8,7 +8,7 @@ import lombok.ToString;
 @Getter
 @Setter
 @ToString
-public class MemberFormDto {
+public class UserFormDto {
 
     @NotBlank
     private String id;

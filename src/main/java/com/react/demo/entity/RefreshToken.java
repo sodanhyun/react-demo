@@ -16,14 +16,14 @@ public class RefreshToken {
     private Long id;
 
     @OneToOne
-    @JoinColumn(name="member_id", nullable = false, unique = true)
-    private Member member;
+    @JoinColumn(name="user_id", nullable = false, unique = true)
+    private User user;
 
     @Column(name="refresh_token", nullable = false)
     private String refreshToken;
 
-    public RefreshToken(Member member, String refreshToken) {
-        this.member = member;
+    public RefreshToken(User user, String refreshToken) {
+        this.user = user;
         this.refreshToken = refreshToken;
     }
 
