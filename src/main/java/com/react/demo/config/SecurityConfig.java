@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -39,40 +40,24 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, HandlerMappingIntrospector introspector) throws Exception {
         http
-                .httpBasic(
-                        basic -> basic.disable()
-                )
-                .csrf(
-                        csrf -> csrf.disable()
-                )
-                .logout(
-                        it -> it.clearAuthentication(true)
-                )
-//                .exceptionHandling( exceptionHandling ->
-//                        exceptionHandling
-//                                .authenticationEntryPoint(jwtAuthenticationEntryPoint)
-//                                .accessDeniedHandler(jwtAccessDeniedHandler)
-//                )
-                .headers( headers ->
-                        headers.frameOptions(
-                                it -> it.sameOrigin()
-                        )
-                )
-                .sessionManagement( sessionManagement ->
-                        sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .httpBasic(AbstractHttpConfigurer::disable)
+//                .formLogin(AbstractHttpConfigurer::disable)
+                .csrf(AbstractHttpConfigurer::disable)
+                .rememberMe(AbstractHttpConfigurer::disable)
+                .sessionManagement( sessionManagement -> sessionManagement
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .addFilterBefore(
                         new TokenAuthenticationFilter(tokenProvider),
                         UsernamePasswordAuthenticationFilter.class
                 )
-                .authorizeHttpRequests( request -> {
-                    request
-                            .requestMatchers(CorsUtils::isPreFlightRequest).permitAll()
-                            .requestMatchers(antMatcher("/auth/**")).permitAll()
-                            .anyRequest().authenticated();
+                .authorizeHttpRequests( request -> {request
+                        .requestMatchers(CorsUtils::isPreFlightRequest).permitAll()
+                        .requestMatchers(antMatcher("/auth/**")).permitAll()
+                        .anyRequest().authenticated();
                 })
-                .cors(
-                        cors -> cors.configurationSource(corsConfigurationSource())
+                .cors(cors -> cors
+                        .configurationSource(corsConfigurationSource())
                 );
 
         return http.build();

@@ -1,5 +1,6 @@
 package com.react.demo.service;
 
+import com.react.demo.dto.CreateAccessTokenRequest;
 import com.react.demo.dto.CreateAccessTokenResponse;
 import com.react.demo.dto.LoginDto;
 import com.react.demo.dto.UserFormDto;
@@ -8,6 +9,7 @@ import com.react.demo.entity.RefreshToken;
 import com.react.demo.jwt.TokenProvider;
 import com.react.demo.repository.UserRepository;
 import com.react.demo.repository.RefreshTokenRepository;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -31,6 +33,7 @@ public class UserService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
+    private final RefreshTokenService refreshTokenService;
 
     public User findById(String memberId) {
         return userRepository.findById(memberId)
@@ -55,15 +58,26 @@ public class UserService implements UserDetailsService {
             throw new RuntimeException("존재하지 않는 유저입니다");
         }
         RefreshToken existRefreshToken = refreshTokenRepository.findByUser(user).orElse(null);
-        String refreshToken = tokenProvider.createRefreshToken(Duration.ofDays(14));
+        String newRefreshToken = tokenProvider.createRefreshToken(Duration.ofDays(14));
         if(existRefreshToken == null) {
-            refreshTokenRepository.save(new RefreshToken(user, refreshToken));
+            refreshTokenRepository.save(new RefreshToken(user, newRefreshToken));
         }else {
-            existRefreshToken.update(refreshToken);
+            existRefreshToken.update(newRefreshToken);
         }
         String accessToken = tokenProvider.createAccessToken(user, Duration.ofHours(2));
 
-        return new CreateAccessTokenResponse(accessToken, refreshToken);
+        return CreateAccessTokenResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(newRefreshToken)
+                .authority(user.getRole().getKey())
+                .build();
+    }
+
+    public void logout(CreateAccessTokenRequest request) {
+        RefreshToken refreshToken = refreshTokenRepository
+                .findByRefreshToken(request.getRefreshToken())
+                .orElseThrow(EntityNotFoundException::new);
+        refreshTokenRepository.delete(refreshToken);
     }
 
     @Override

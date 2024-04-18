@@ -30,7 +30,10 @@ public class TokenService {
                 .update(tokenProvider.createRefreshToken(Duration.ofDays(1)))
                 .getRefreshToken();
 
-        return new CreateAccessTokenResponse(accessToken, newRefreshToken);
+        return CreateAccessTokenResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(newRefreshToken)
+                .build();
 
     }
 }
