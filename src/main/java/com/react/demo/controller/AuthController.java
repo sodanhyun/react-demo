@@ -47,7 +47,7 @@ public class AuthController {
         try{
             CreateAccessTokenResponse response = tokenRefresh.tokenRefresh(request.getRefreshToken());
             return new ResponseEntity<>(response, HttpStatus.OK);
-        }catch (RuntimeException e) {
+        }catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.METHOD_NOT_ALLOWED);
         }
     }
