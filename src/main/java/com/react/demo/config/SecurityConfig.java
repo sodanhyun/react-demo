@@ -1,14 +1,17 @@
 package com.react.demo.config;
 
-import com.react.demo.jwt.TokenAuthenticationFilter;
+import com.react.demo.jwt.JwtAccessDeniedHandler;
+import com.react.demo.jwt.JwtAuthenticationEntryPoint;
+import com.react.demo.jwt.JwtFilter;
 import com.react.demo.jwt.TokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,7 +21,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 
 import static org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher;
 
@@ -27,37 +29,50 @@ import static org.springframework.security.web.util.matcher.AntPathRequestMatche
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final TokenProvider tokenProvider;
-
     @Value("${frontDomain}")
     private String frontDomain;
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+    private final TokenProvider tokenProvider;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, HandlerMappingIntrospector introspector) throws Exception {
+    public PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .httpBasic(AbstractHttpConfigurer::disable)
-//                .formLogin(AbstractHttpConfigurer::disable)
-                .csrf(AbstractHttpConfigurer::disable)
-                .rememberMe(AbstractHttpConfigurer::disable)
-                .sessionManagement( sessionManagement -> sessionManagement
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .httpBasic(
+                        basic -> basic.disable()
+                )
+                .csrf(
+                        csrf -> csrf.disable()
+                )
+                .sessionManagement(
+                        sessionManage -> sessionManage
+                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .addFilterBefore(
-                        new TokenAuthenticationFilter(tokenProvider),
+                        new JwtFilter(tokenProvider),
                         UsernamePasswordAuthenticationFilter.class
                 )
-                .authorizeHttpRequests( request -> {request
-                        .requestMatchers(CorsUtils::isPreFlightRequest).permitAll()
-                        .requestMatchers(antMatcher("/auth/**")).permitAll()
-                        .anyRequest().authenticated();
+                .exceptionHandling( exceptionHandler -> exceptionHandler
+                        .accessDeniedHandler(jwtAccessDeniedHandler)
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                )
+                .authorizeHttpRequests(request -> {
+                    request
+                            .requestMatchers(CorsUtils::isPreFlightRequest).permitAll()
+                            .requestMatchers(antMatcher("/main/**")).permitAll()
+                            .requestMatchers(antMatcher("/favicon.ico")).permitAll()
+                            .requestMatchers(antMatcher("/auth/**")).permitAll()
+                            .requestMatchers(antMatcher("/item/**")).permitAll()
+                            .requestMatchers(antMatcher("/images/**")).permitAll()
+                            .requestMatchers(antMatcher("/admin/**")).hasRole("ADMIN")
+                            .anyRequest().authenticated();
                 })
-                .cors(cors -> cors
-                        .configurationSource(corsConfigurationSource())
+                .cors(
+                        cors -> cors.configurationSource(corsConfigurationSource())
                 );
 
         return http.build();
@@ -70,12 +85,19 @@ public class SecurityConfig {
         config.addAllowedOrigin(frontDomain);
         config.addAllowedMethod("*");
         config.addAllowedHeader("*");
-        config.setMaxAge(3600L);
+        config.setMaxAge(86400L);
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer(){
+        return web -> web.ignoring()
+                .requestMatchers(PathRequest.toStaticResources().atCommonLocations()
+                );
     }
 
 }

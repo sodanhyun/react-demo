@@ -28,6 +28,8 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String password;
 
+    private String address;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private Role role;
@@ -38,6 +40,7 @@ public class User implements UserDetails {
         user.setName(dto.getName());
         String password = passwordEncoder.encode(dto.getPassword());
         user.setPassword(password);
+        user.setAddress(dto.getAddress());
         user.setRole(Role.USER);
         return user;
     }
@@ -51,12 +54,12 @@ public class User implements UserDetails {
 
     @Override
     public String getUsername() {
-        return id;
+        return this.id;
     }
 
     @Override
     public String getPassword() {
-        return password;
+        return this.password;
     }
 
     @Override
